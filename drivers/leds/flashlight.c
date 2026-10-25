@@ -56,6 +56,35 @@ static ssize_t flashlight_show_mode(struct device *dev,
                 flashlight_mode_string[flashlight_dev->props.mode]);
 }
 
+static ssize_t flashlight_store_mode(struct device *dev,
+				     struct device_attribute *attr, const char *buf, size_t count)
+{
+	int mode;
+	int n = buf[count - 1] == '\n' ? count - 1 : count;
+	struct flashlight_device *flashlight_dev = to_flashlight_device(dev);
+
+	if (!strncmp(buf, flashlight_mode_string[FLASHLIGHT_MODE_OFF], n)) {
+		mode = FLASHLIGHT_MODE_OFF;
+	} else if (!strncmp(buf, flashlight_mode_string[FLASHLIGHT_MODE_TORCH], n)) {
+		mode = FLASHLIGHT_MODE_TORCH;
+	} else if (!strncmp(buf, flashlight_mode_string[FLASHLIGHT_MODE_FLASH], n)) {
+		mode = FLASHLIGHT_MODE_FLASH;
+	} else if (!strncmp(buf, flashlight_mode_string[FLASHLIGHT_MODE_MIXED], n)) {
+		mode = FLASHLIGHT_MODE_MIXED;
+	} else {
+		pr_err("%s: invalid mode for flashlight.\n", __func__);
+		return -1;
+	}
+	if (flashlight_set_mode(flashlight_dev, mode) != 0) {
+		pr_err("%s: failed to set flashlight mode\n", __func__);
+		return -1;
+	}
+
+	pr_info("%s: set flashlight mode: %s\n",
+		__func__, flashlight_mode_string[mode]);
+	return count;
+}
+
 static ssize_t flashlight_show_torch_max_brightness(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -229,7 +258,7 @@ static void flashlight_device_release(struct device *dev)
 static struct device_attribute flashlight_device_attributes[] = {
 	__ATTR(name, 0444, flashlight_show_name, NULL),
 	__ATTR(type, 0444, flashlight_show_type, NULL),
-	__ATTR(mode, 0444, flashlight_show_mode, NULL),
+	__ATTR(mode, 0644, flashlight_show_mode, flashlight_store_mode),
 	__ATTR(torch_max_brightness, 0444,
 		flashlight_show_torch_max_brightness, NULL),
 	__ATTR(strobe_max_brightness, 0444,
