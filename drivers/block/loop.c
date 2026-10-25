@@ -640,6 +640,10 @@ static int loop_change_fd(struct loop_device *lo, struct block_device *bdev,
 	file = fget(arg);
 	if (!file)
 		goto out;
+	/* pmOS: 3.4 loop cannot do O_DIRECT on the backing file from the loop kthread (NULL mm oops) */
+	spin_lock(&file->f_lock);
+	file->f_flags &= ~O_DIRECT;
+	spin_unlock(&file->f_lock);
 
 	inode = file->f_mapping->host;
 	old_file = lo->lo_backing_file;
@@ -822,6 +826,10 @@ static int loop_set_fd(struct loop_device *lo, fmode_t mode,
 	file = fget(arg);
 	if (!file)
 		goto out;
+	/* pmOS: 3.4 loop cannot do O_DIRECT on the backing file from the loop kthread (NULL mm oops) */
+	spin_lock(&file->f_lock);
+	file->f_flags &= ~O_DIRECT;
+	spin_unlock(&file->f_lock);
 
 	error = -EBUSY;
 	if (lo->lo_state != Lo_unbound)
