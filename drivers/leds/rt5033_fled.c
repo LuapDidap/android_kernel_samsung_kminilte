@@ -531,7 +531,7 @@ int32_t rt5033_charger_notification(struct rt_fled_info *fled_info,
 		* we will check torch had already been on or not
 		*/
 		if (mode == FLASHLIGHT_MODE_TORCH || mode == FLASHLIGHT_MODE_MIXED) {
-			usleep(2500);
+			usleep_range(2500, 2500);
 			rt5033_clr_bits(info->i2c_client, 0x1a, 0x80);
 		}
 	}
