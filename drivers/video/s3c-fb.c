@@ -1000,6 +1000,22 @@ static void s3c_fb_trigger(struct s3c_fb *sfb)
  *
  * Framebuffer layer request to change the power state.
  */
+/* pmOS: without the Android HWComposer nobody re-programs the window after
+ * an unblank in ION mode, so the screen stays black. Re-apply the current
+ * mode via pan_display (which also calls set_par) shortly after unblank. */
+static struct fb_info *pmos_unblank_info;
+
+static void pmos_unblank_work_fn(struct work_struct *work)
+{
+	struct fb_info *info = pmos_unblank_info;
+
+	if (!info || !lock_fb_info(info))
+		return;
+	fb_pan_display(info, &info->var);
+	unlock_fb_info(info);
+}
+static DECLARE_DELAYED_WORK(pmos_unblank_work, pmos_unblank_work_fn);
+
 static int s3c_fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct s3c_fb_win *win = info->par;
@@ -1056,6 +1072,9 @@ static int s3c_fb_blank(int blank_mode, struct fb_info *info)
 
 		if (pd->dsim_displayon)
 			pd->dsim_displayon(dsim_device);
+
+		pmos_unblank_info = info;
+		schedule_delayed_work(&pmos_unblank_work, msecs_to_jiffies(300));
 
 #if defined(CONFIG_FB_I80_COMMAND_MODE)
 		s3c_fb_trigger(sfb);
